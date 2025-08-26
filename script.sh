@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# ============================================================== CONFIGURATION ==============================================================
+# ================================================= CONFIGURATION ======================================================
 REMOTE_HOST="remote_host"
 REMOTE_PORT="remote_port"
 REMOTE_USER="remote_user"
 REMOTE_PASSWORD="remote_password"
 REMOTE_DB="remote_db_name"
-DUMP_FILE="dump.sql"
+DUMP_FILE="dump.sql"CRED_FILE="my.cnf"
 
-# ==================================================== Create temporary credentials file =====================================================
+# ========================================= Create temporary credentials file ==========================================
 cat > $CRED_FILE <<EOL
 [client]
 user=$REMOTE_USER
@@ -19,20 +19,22 @@ EOL
 
 chmod 600 $CRED_FILE
 
-# ========================================================== Dump DB with progress ============================================================
+# =============================================== Dump DB with progress ================================================
 echo "Dumping database..."
 docker run --rm \
   -v "$PWD:/dump" \
   -v "$PWD/$CRED_FILE:/root/.my.cnf:ro" \
-  --entrypoint sh \
   mysql:8.0 \
-  -c "exec mysqldump --defaults-file=/root/.my.cnf $REMOTE_DB" | pv > "$DUMP_FILE"
+  sh -c "exec mysqldump --defaults-file=/root/.my.cnf --no-tablespaces $REMOTE_DB" | pv > "$DUMP_FILE"
 
 if [ $? -ne 0 ]; then
   echo "Error dumping remote database"
   rm -f $CRED_FILE
   exit 1
 fi
+
+# Clean up credentials file
+rm -f "$CRED_FILE"
 
 echo "Dump completed: $DUMP_FILE"
 
