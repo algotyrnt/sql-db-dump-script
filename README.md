@@ -23,6 +23,7 @@ REMOTE_PORT="3306"                # Remote MySQL port
 REMOTE_USER="your_user"           # MySQL username
 REMOTE_PASSWORD="your_password"   # MySQL password
 REMOTE_DB="your_database"         # Database to dump
+TABLES_TO_DUMP="table1 table2"    # Tables to dump
 DUMP_FILE="dump.sql"              # Output SQL dump file
 CRED_FILE="my.cnf"                # Temporary credentials file
 ```
