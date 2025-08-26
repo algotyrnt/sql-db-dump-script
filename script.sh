@@ -6,7 +6,10 @@ REMOTE_PORT="remote_port"
 REMOTE_USER="remote_user"
 REMOTE_PASSWORD="remote_password"
 REMOTE_DB="remote_db_name"
-DUMP_FILE="dump.sql"CRED_FILE="my.cnf"
+TABLES_TO_DUMP="table1 table2 table3"
+DUMP_FILE="dump.sql"
+CRED_FILE="my.cnf"
+
 
 # ========================================= Create temporary credentials file ==========================================
 cat > $CRED_FILE <<EOL
@@ -25,7 +28,7 @@ docker run --rm \
   -v "$PWD:/dump" \
   -v "$PWD/$CRED_FILE:/root/.my.cnf:ro" \
   mysql:8.0 \
-  sh -c "exec mysqldump --defaults-file=/root/.my.cnf --no-tablespaces $REMOTE_DB" | pv > "$DUMP_FILE"
+  sh -c "exec mysqldump --defaults-file=/root/.my.cnf --no-tablespaces $REMOTE_DB $TABLES_TO_DUMP" | pv > "$DUMP_FILE"
 
 if [ $? -ne 0 ]; then
   echo "Error dumping remote database"
