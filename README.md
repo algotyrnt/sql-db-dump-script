@@ -23,7 +23,7 @@ This script securely dumps a remote MySQL database using Docker, with a progress
 
 Edit the script and update the configuration section:
 
-\`\`\`bash
+```
 REMOTE_HOST="your_db_host" # Remote MySQL host
 REMOTE_PORT="3306" # Remote MySQL port
 REMOTE_USER="your_user" # MySQL username
@@ -32,18 +32,14 @@ REMOTE_DB="your_database" # Database to dump
 TABLES_TO_DUMP="table1 table2" # Tables to dump (leave empty to dump full database)
 DUMP_FILE="dump.sql" # Output SQL dump file
 CRED_FILE="my.cnf" # Temporary credentials file
-\`\`\`
+```
 
 ## Usage
 
 1. Make the script executable:
-   \`\`\`bash
-   chmod +x dump.sh
-   \`\`\`
+   `chmod +x dump.sh`
 2. Run the script:
-   \`\`\`bash
-   ./dump.sh
-   \`\`\`
+   `./dump.sh`
 3. The dump will be saved to `dump.sql`.
 4. The script prints whether it is dumping the full database or specific tables.
 
