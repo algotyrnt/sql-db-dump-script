@@ -1,15 +1,23 @@
 #!/bin/bash
 
 # ================================================= CONFIGURATION ======================================================
-REMOTE_HOST="remote_host"
-REMOTE_PORT="remote_port"
-REMOTE_USER="remote_user"
-REMOTE_PASSWORD="remote_password"
-REMOTE_DB="remote_db_name"
-TABLES_TO_DUMP="table1 table2 table3"  # Leave empty to dump full DB
-DUMP_FILE="dump.sql"
+ENV_FILE=".env"
 CRED_FILE="my.cnf"
 
+# Check if .env file exists
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Error: Configuration file '$ENV_FILE' not found!"
+    echo "Please create a .env file with: REMOTE_HOST, REMOTE_PORT, REMOTE_USER, REMOTE_PASSWORD, REMOTE_DB, DUMP_FILE"
+    exit 1
+fi
+
+# Load variables from .env
+set -a
+source "$ENV_FILE"
+set +a
+
+# Default fallback for tables (if empty, dump all)
+TABLES_ARG="${TABLES_TO_DUMP:-}"
 
 # ========================================= Create temporary credentials file ==========================================
 cat > $CRED_FILE <<EOL
@@ -23,15 +31,12 @@ EOL
 chmod 600 $CRED_FILE
 
 # =============================================== Dump DB with progress ================================================
-echo "Dumping database..."
+echo "Creating a dump for database: $REMOTE_DB"
 
-# Prepare tables argument
-if [ -z "$TABLES_TO_DUMP" ]; then
-    TABLES_ARG=""
-    echo "Dumping full database: $REMOTE_DB"
+if [ -z "$TABLES_ARG" ]; then
+    echo "Mode: Full Database Dump"
 else
-    TABLES_ARG="$TABLES_TO_DUMP"
-    echo "Dumping specific tables: $TABLES_TO_DUMP"
+    echo "Mode: Specific Tables ($TABLES_ARG)"
 fi
 
 docker run --rm \
@@ -43,7 +48,6 @@ docker run --rm \
     --skip-lock-tables \
     --no-tablespaces \
     $REMOTE_DB $TABLES_ARG" | pv > "$DUMP_FILE"
-
 
 if [ $? -ne 0 ]; then
   echo "Error dumping remote database"
