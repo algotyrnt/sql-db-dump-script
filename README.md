@@ -1,6 +1,6 @@
 # Dockerized MySQL Dump Script
 
-A Bash script to dump up a remote MySQL database (or specific tables) using a Docker container. It facilitates secure dumping by loading credentials from an environment file and includes a real-time progress bar.
+A Bash script to dump a remote MySQL database (or specific tables) using a Docker container. It facilitates secure dumping by loading credentials from an environment file and includes a real-time progress bar.
 
 ## Prerequisites
 
