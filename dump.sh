@@ -19,6 +19,23 @@ set +a
 # Default fallback for tables (if empty, dump all)
 TABLES_ARG="${TABLES_TO_DUMP:-}"
 
+# Optional schema-only mode (no table data)
+SCHEMA_ONLY_RAW="${DUMP_SCHEMA_ONLY:-false}"
+SCHEMA_ONLY="$(echo "$SCHEMA_ONLY_RAW" | tr '[:upper:]' '[:lower:]')"
+
+case "$SCHEMA_ONLY" in
+  true|1|yes|y)
+    SCHEMA_FLAG="--no-data"
+    ;;
+  false|0|no|n|"")
+    SCHEMA_FLAG=""
+    ;;
+  *)
+    echo "Error: Invalid DUMP_SCHEMA_ONLY value '$SCHEMA_ONLY_RAW'. Use true/false."
+    exit 1
+    ;;
+esac
+
 # ========================================= Create temporary credentials file ==========================================
 cat > $CRED_FILE <<EOL
 [client]
@@ -34,9 +51,17 @@ chmod 600 $CRED_FILE
 echo "Creating a dump for database: $REMOTE_DB"
 
 if [ -z "$TABLES_ARG" ]; then
+  if [ -n "$SCHEMA_FLAG" ]; then
+    echo "Mode: Full Database Schema Only"
+  else
     echo "Mode: Full Database Dump"
+  fi
 else
+  if [ -n "$SCHEMA_FLAG" ]; then
+    echo "Mode: Specific Tables Schema Only ($TABLES_ARG)"
+  else
     echo "Mode: Specific Tables ($TABLES_ARG)"
+  fi
 fi
 
 docker run --rm \
@@ -47,6 +72,7 @@ docker run --rm \
     --single-transaction \
     --skip-lock-tables \
     --no-tablespaces \
+    $SCHEMA_FLAG \
     $REMOTE_DB $TABLES_ARG" | pv > "$DUMP_FILE"
 
 if [ $? -ne 0 ]; then
