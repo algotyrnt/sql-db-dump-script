@@ -45,7 +45,7 @@ Ensure the following are installed on your host machine:
     bash dump.sh
     ```
 
-**Note:** Always invoke with `bash dump.sh`, not `sh dump.sh`. The script uses Bash-specific features (`PIPESTATUS`, `[[ ]]`) that are not available in `sh`.
+**Note:** Always invoke with `bash dump.sh`, not `sh dump.sh`. The script uses Bash-specific features such as `PIPESTATUS` and `source` that are not available in `sh`.
 
 ## Features
 
