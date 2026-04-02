@@ -37,7 +37,7 @@ case "$SCHEMA_ONLY" in
 esac
 
 # ========================================= Create temporary credentials file ==========================================
-cat > $CRED_FILE <<EOL
+cat > "$CRED_FILE" <<EOL
 [client]
 user=$REMOTE_USER
 password=$REMOTE_PASSWORD
@@ -45,23 +45,35 @@ host=$REMOTE_HOST
 port=$REMOTE_PORT
 EOL
 
-chmod 600 $CRED_FILE
+chmod 600 "$CRED_FILE"
+
+# ============================================= Resolve tables (exclude views) =========================================
+if [ -z "$TABLES_ARG" ]; then
+  echo "Resolving base tables (excluding views)..."
+  TABLES_ARG=$(docker run --rm \
+    -v "$PWD/$CRED_FILE:/root/.my.cnf:ro" \
+    mysql:8.0 \
+    sh -c "mysql --defaults-file=/root/.my.cnf -N -e \
+      \"SELECT table_name FROM information_schema.tables \
+        WHERE table_schema='$REMOTE_DB' AND table_type='BASE TABLE';\"" \
+    | tr '\n' ' ')
+
+  if [ -z "$TABLES_ARG" ]; then
+    echo "Error: Could not resolve table list"
+    rm -f "$CRED_FILE"
+    exit 1
+  fi
+
+  echo "Tables to dump: $TABLES_ARG"
+fi
 
 # =============================================== Dump DB with progress ================================================
 echo "Creating a dump for database: $REMOTE_DB"
 
-if [ -z "$TABLES_ARG" ]; then
-  if [ -n "$SCHEMA_FLAG" ]; then
-    echo "Mode: Full Database Schema Only"
-  else
-    echo "Mode: Full Database Dump"
-  fi
+if [ -n "$SCHEMA_FLAG" ]; then
+  echo "Mode: Schema Only"
 else
-  if [ -n "$SCHEMA_FLAG" ]; then
-    echo "Mode: Specific Tables Schema Only ($TABLES_ARG)"
-  else
-    echo "Mode: Specific Tables ($TABLES_ARG)"
-  fi
+  echo "Mode: Full Dump"
 fi
 
 docker run --rm \
@@ -71,14 +83,42 @@ docker run --rm \
   sh -c "exec mysqldump --defaults-file=/root/.my.cnf \
     --single-transaction \
     --skip-lock-tables \
+    --skip-triggers \
     --no-tablespaces \
     $SCHEMA_FLAG \
     $REMOTE_DB $TABLES_ARG" | pv > "$DUMP_FILE"
 
-if [ $? -ne 0 ]; then
-  echo "Error dumping remote database"
-  rm -f $CRED_FILE
+MYSQLDUMP_EXIT=${PIPESTATUS[0]}
+if [ "$MYSQLDUMP_EXIT" -ne 0 ]; then
+  echo "Error: mysqldump failed"
+  rm -f "$CRED_FILE"
   exit 1
+fi
+
+# ================================================= Dump views =========================================================
+echo "Dumping views..."
+
+VIEWS=$(docker run --rm \
+  -v "$PWD/$CRED_FILE:/root/.my.cnf:ro" \
+  mysql:8.0 \
+  sh -c "mysql --defaults-file=/root/.my.cnf -N -e \
+    \"SELECT table_name FROM information_schema.tables \
+      WHERE table_schema='$REMOTE_DB' AND table_type='VIEW';\"")
+
+if [ -n "$VIEWS" ]; then
+  for VIEW in $VIEWS; do
+    SQL=$(docker run --rm \
+      -v "$PWD/$CRED_FILE:/root/.my.cnf:ro" \
+      mysql:8.0 \
+      sh -c "mysql --defaults-file=/root/.my.cnf -N -e \
+        \"SELECT view_definition FROM information_schema.views \
+          WHERE table_schema='$REMOTE_DB' AND table_name='$VIEW';\"")
+
+    echo "CREATE OR REPLACE VIEW \`$VIEW\` AS $SQL;" >> "$DUMP_FILE"
+  done
+  echo "Views dumped: $(echo "$VIEWS" | tr '\n' ' ')"
+else
+  echo "No views found"
 fi
 
 # Clean up credentials file

@@ -17,7 +17,6 @@ Ensure the following are installed on your host machine:
 1.  **Clone this repository** (or download the script).
 
 2.  **Create a `.env` file** in the same directory as the script. You can copy the template below:
-
     ```bash
     # .env
     REMOTE_HOST=your_db_host
@@ -37,15 +36,16 @@ Ensure the following are installed on your host machine:
 ## Usage
 
 1.  **Make the script executable:**
-
     ```bash
     chmod +x dump.sh
     ```
 
 2.  **Run the script:**
     ```bash
-    ./dump.sh
+    bash dump.sh
     ```
+
+**Note:** Always invoke with `bash dump.sh`, not `sh dump.sh`. The script uses Bash-specific features such as `PIPESTATUS` and `source` that are not available in `sh`.
 
 ## Features
 
@@ -56,6 +56,8 @@ Ensure the following are installed on your host machine:
 - **Selective Dumping:** Option to dump specific tables or the entire database.
 - **Schema-only Mode:** Set `DUMP_SCHEMA_ONLY=true` to export only table structure without data.
 - **No Tablespaces:** Uses `--no-tablespaces` to avoid errors related to tablespace information (requires PROCESS privilege).
+- **View Support:** Automatically detects and dumps views separately via `information_schema`, working around `SHOW VIEW` privilege restrictions.
+- **Accurate Error Detection:** Captures `mysqldump`'s exit code correctly through the `pv` pipe, so dump failures are never silently ignored.
 
 ## Troubleshooting
 
@@ -65,3 +67,5 @@ Ensure the following are installed on your host machine:
 - **Progress bar missing:** Install `pv`.
 - **Permission errors:** Check script permissions (`chmod +x dump.sh`) and folder write permissions.
 - **Dump errors:** Verify remote credentials, host, port, and database access.
+- **`SHOW VIEW` denied:** The script handles this automatically by resolving views via `information_schema.views`. No `SHOW VIEW` privilege is required on the DB user.
+- **`unknown condition` / `PIPESTATUS` errors:** You are running the script with `sh` instead of `bash`. Use `bash dump.sh`.
